@@ -25,7 +25,6 @@ function App() {
     <BrowserRouter>
       <div style={{ padding: "20px" }}>
         <Routes>
-          {/* Base Root Layout Route */}
           <Route
             path="/"
             element={

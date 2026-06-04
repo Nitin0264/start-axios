@@ -85,21 +85,18 @@ app.get("/api/blogs/:id", async (req,res) =>
     res.status(500).json({message: "server error. invalid id format."})
   }
 })
-// DELETE Route to erase a blog by its parameter ID
+// DELETE Route 
 app.delete("/api/blogs/:id", async (req, res) => {
   try {
     // 1. Extract the unique tracking ID from the URL parameters
     const targetId = req.params.id;
 
-    // 2. Pass the ID to Mongoose to search and destroy it immediately
     const deletedDocument = await Blog.findByIdAndDelete(targetId);
 
-    // 3. Safety Check: If the document doesn't exist, tell the frontend
     if (!deletedDocument) {
       return res.status(404).json({ message: "This blog could not be found. It might already be deleted." });
     }
 
-    // 4. Send back a success confirmation
     res.status(200).json({ message: "Blog post deleted successfully!" });
 
   } catch (error) {
@@ -108,7 +105,6 @@ app.delete("/api/blogs/:id", async (req, res) => {
   }
 });
 // edit route 
-// PUT Route to update a blog post by its parameter ID
 app.put("/api/blogs/:id", async (req, res) => {
   try {
     const targetId = req.params.id;
@@ -119,8 +115,7 @@ app.put("/api/blogs/:id", async (req, res) => {
       return res.status(400).json({ message: "All fields are required to update the blog." });
     }
 
-    // 2. Find by ID and update it with the new object data.
-    // { new: true } tells Mongoose to return the newly updated version of the document.
+
     const updatedBlog = await Blog.findByIdAndUpdate(
       targetId,
       { title, description, imageUrl },
