@@ -19,12 +19,10 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
     setEditDescription(blog.description);
   };
 
-  // Function to cancel editing mode
   const cancelEditing = () => {
     setEditingId(null);
   };
 
-  // 2. Handle saving the edited changes (The PUT request)
   const handleUpdate = async (id) => {
     try {
       const response = await axios.put(`http://localhost:8000/api/blogs/${id}`, {
@@ -34,17 +32,16 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
       });
 
       alert(response.data.message);
-      setEditingId(null); // Close the edit form mode
+      setEditingId(null); 
 
       if (onBlogUpdated) {
-        onBlogUpdated(); // Refresh parent application list state
+        onBlogUpdated(); 
       }
     } catch (err) {
       alert("Failed to update the blog post.");
     }
   };
 
-  // Existing delete function
   const triggerDelete = async (idOfBlog) => {
     const confirmChoice = window.confirm("Are you absolutely sure you want to delete this post?");
     if (confirmChoice) {
@@ -73,7 +70,7 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
           <div key={blog._id} style={{ borderBottom: "1px solid #ccc", paddingBottom: "15px", marginBottom: "15px" }}>
             
             {isCurrentlyEditing ? (
-              /* --- VIEW A: THE EDITING FORM VIEW --- */
+          
               <div>
                 <div>
                   <label>Edit Title: </label>
@@ -92,7 +89,7 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
                 <button type="button" onClick={cancelEditing}>Cancel</button>
               </div>
             ) : (
-              /* --- VIEW B: THE REGULAR VIEW --- */
+
               <div>
                 <h3>
                   <Link to={`/blog/${blog._id}`}>{blog.title}</Link>
