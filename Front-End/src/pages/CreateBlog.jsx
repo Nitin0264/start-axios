@@ -17,7 +17,7 @@ function CreateBlog({ onBlogCreated }) {
     try {
       const response = await axios.post("http://localhost:8000/api/blogs", {
         title,
-        description,
+        description,  
         imageUrl
       });
 
