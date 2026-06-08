@@ -43,10 +43,10 @@ const blogSchema = new mongoose.Schema({
 const Blog = mongoose.model("Blog", blogSchema);
 
 // ==========================================
-// 4. API ROUTES (Arranged Logically)
+// 4. API ROUTES
 // ==========================================
 
-// [CREATE] - Post a brand new blog
+// [CREATE BLOG] - Post a brand new blog
 app.post("/api/blogs", async (req, res) => {
   try {
     const { title, description, imageUrl } = req.body;
@@ -71,7 +71,7 @@ app.post("/api/blogs", async (req, res) => {
   }
 });
 
-// [READ ALL] - Fetch every single blog inside MongoDB
+// [READ ALL BLOGS] - Fetch every single blog inside MongoDB
 app.get("/api/blogs", async (req, res) => {
   try {
     const allBlogs = await Blog.find();
@@ -82,14 +82,13 @@ app.get("/api/blogs", async (req, res) => {
   }
 });
 
-// [READ SINGLE] - Fetch one specific blog by its URL ID parameter
+// [READ SINGLE BLOG] - Fetch one specific blog by its URL ID parameter
 app.get("/api/blogs/:id", async (req, res) => {
   try {
     const structuralId = req.params.id;
     const singleBlog = await Blog.findById(structuralId);
     
     if (!singleBlog) {
-      // FIXED: Added 'res.' context before the status call to prevent engine crashes
       return res.status(404).json({ message: "blog does not exist." });
     }
     res.status(200).json(singleBlog);
@@ -99,7 +98,7 @@ app.get("/api/blogs/:id", async (req, res) => {
   }
 });
 
-// [UPDATE] - Edit an existing blog using body data packets and ID parameters
+// [UPDATE BLOG] - Edit an existing blog using body data packets and ID parameters
 app.put("/api/blogs/:id", async (req, res) => {
   try {
     const targetId = req.params.id;
@@ -119,16 +118,15 @@ app.put("/api/blogs/:id", async (req, res) => {
       return res.status(404).json({ message: "Blog not found." });
     }
 
-    res.status(200).json({ message: "Blog updated success
-      fully!", blog: updatedBlog });
+    // FIXED: Put back on a single line to prevent syntax break
+    res.status(200).json({ message: "Blog updated successfully!", blog: updatedBlog });
   } catch (error) {
     console.error("Update API error:", error);
     res.status(500).json({ message: "Server error. Could not update the blog." });
   }
 });
 
-// [DELETE] - Erase a blog document permanently from the cluster 
-// index
+// [DELETE BLOG] - Erase a blog document permanently from the cluster
 app.delete("/api/blogs/:id", async (req, res) => {
   try {
     const targetId = req.params.id;
@@ -142,6 +140,35 @@ app.delete("/api/blogs/:id", async (req, res) => {
   } catch (error) {
     console.error("Deletion API error:", error);
     res.status(500).json({ message: "Server error. Could not delete the post." });
+  }
+});
+
+// [USER REGISTRATION] - Secure registration with bcrypt hashing
+app.post("/api/register", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: "username and password are required" });
+    }
+    
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ message: "Username is already registered" });
+    }
+    
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const newUser = new User({
+      username,
+      password: hashedPassword
+    });
+    
+    await newUser.save();
+    res.status(201).json({ message: "user registered successfully" });
+  } catch (error) {
+    // FIXED: Corrected parenthesis layout and syntax formatting inside the catch block
+    console.error("registration error:", error);
+    res.status(500).json({ message: "server error during registration" });
   }
 });
 

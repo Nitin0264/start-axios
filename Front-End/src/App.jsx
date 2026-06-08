@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import axios from "axios";
+import Register from "./pages/Register";
 import CreateBlog from "./pages/CreateBlog";
 import BlogList from "./pages/BlogList";
 import BlogDetail from "./pages/BlogDetail";
@@ -41,6 +42,7 @@ function App() {
 
 
           <Route path="/blog/:id" element={<BlogDetail />} />
+          <Route path="/register" element={<Register />} />
         </Routes>
       </div>
     </BrowserRouter>
