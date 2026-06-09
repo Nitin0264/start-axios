@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
-
+import jwt from "jsonwebtoken";
 const app = express();
 const Port = 8000;
 
@@ -172,6 +172,53 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
+
+// [USER LOGIN] - Verify credentials and issue a secure JWT ticket
+app.post("/api/login", async (req, res) => {
+ 
+  try {
+    const { username, password } = req.body;
+
+    
+    // 1. Validation: Ensure fields aren't empty
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password are required." });
+    }
+
+    // 2. Check if user exists: Search MongoDB for the username
+    const user = await User.findOne({ username });
+    if (!user) {
+      // Security Tip: Use a generic message so hackers don't know if the username is valid
+      return res.status(400).json({ message: "Invalid username or password." });
+    }
+
+    // 3. Verify Password: Compare the plain-text input password with the hashed database password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: "Invalid username or password." });
+    }
+
+    // 4. Generate JWT: Sign a data token with a secret key
+    // We embed the user's ID and role inside the token payload
+    const token = jwt.sign(
+      { id: user._id, role: user.role }, 
+      "SUPER_SECRET_KEY_123", // The encryption key (Secret)
+      { expiresIn: "1h" }     // Token automatically expires in 1 hour
+    );
+
+    // 5. Send back the token and success confirmation to the frontend
+    res.status(200).json({
+      message: "Login successful!",
+      token: token,
+      user: { username: user.username, role: user.role }
+    });
+    
+
+  } catch (error) {
+    console.error("Login route error:", error);
+    res.status(500).json({ message: "Server error during login." });
+  }
+});
 // ==========================================
 // 5. SERVER STARTUP
 // ==========================================

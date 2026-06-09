@@ -5,6 +5,7 @@ import Register from "./pages/Register";
 import CreateBlog from "./pages/CreateBlog";
 import BlogList from "./pages/BlogList";
 import BlogDetail from "./pages/BlogDetail";
+import Login from "./pages/Login";
 
 function App() {
   const [blogs, setBlogs] = useState([]);
@@ -39,7 +40,7 @@ function App() {
               </>
             }
           />
-
+              <Route path="/login" element={<Login />} />
 
           <Route path="/blog/:id" element={<BlogDetail />} />
           <Route path="/register" element={<Register />} />
