@@ -188,25 +188,24 @@ app.post("/api/login", async (req, res) => {
     // 2. Check if user exists: Search MongoDB for the username
     const user = await User.findOne({ username });
     if (!user) {
-      // Security Tip: Use a generic message so hackers don't know if the username is valid
+     
       return res.status(400).json({ message: "Invalid username or password." });
     }
 
-    // 3. Verify Password: Compare the plain-text input password with the hashed database password
+   
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({ message: "Invalid username or password." });
     }
 
-    // 4. Generate JWT: Sign a data token with a secret key
-    // We embed the user's ID and role inside the token payload
+    
     const token = jwt.sign(
       { id: user._id, role: user.role }, 
       "SUPER_SECRET_KEY_123", // The encryption key (Secret)
-      { expiresIn: "1h" }     // Token automatically expires in 1 hour
+      { expiresIn: "1h" }     
     );
 
-    // 5. Send back the token and success confirmation to the frontend
+  
     res.status(200).json({
       message: "Login successful!",
       token: token,
