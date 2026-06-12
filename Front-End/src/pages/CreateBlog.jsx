@@ -9,37 +9,58 @@ function CreateBlog({ onBlogCreated }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage("");
-    setError("");
+ const handleSubmit = async (e) => {
+  e.preventDefault(); // Stop page reload
+  setMessage("");
+  setError("");
 
-    try {
-      const response = await axios.post("http://localhost:8000/api/blogs", {
+  // 1. Grab the secure token from the browser's LocalStorage
+  const token = localStorage.getItem("blogToken");
+
+  // 2. Safety Check: If there's no token, stop immediately before hitting the network
+  if (!token) {
+    setError("You must be logged in to create a blog post.");
+    return;
+  }
+
+  try {
+    // 3. Pass the token inside the configuration options object as an Authorization header
+    const response = await axios.post(
+      "http://localhost:8000/api/blogs", 
+      {
         title,
-        description,  
+        description,
         imageUrl
-      });
-
-      setMessage(response.data.message);
-      
-      if (onBlogCreated) {
-        onBlogCreated();
+      },
+      {
+        headers: {
+          // Note the exact string matching your backend split logic: "Bearer <token>"
+          Authorization: `Bearer ${token}` 
+        }
       }
+    );
 
-      setTitle("");
-      setImageUrl("");
-      setDescription("");
-
-    } catch (err) {
-      if (err.response && err.response.data) {
-        setError(err.response.data.message);
-      } else {
-        setError("Cannot connect to server. Is your backend running?");
-      }
+    // Show success message from server
+    setMessage(response.data.message);
+    
+    // Trigger the parent list to refresh instantly
+    if (onBlogCreated) {
+      onBlogCreated();
     }
-  };
 
+    // Clear input fields out
+    setTitle("");
+    setImageUrl("");
+    setDescription("");
+
+  } catch (err) {
+    if (err.response && err.response.data) {
+      setError(err.response.data.message);
+    } else {
+      setError("Cannot connect to server. Is your backend running?");
+    }
+  }
+};
   return (
     <div>
       <h2>Creating a New Blog Post</h2>

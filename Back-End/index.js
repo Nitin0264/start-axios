@@ -3,6 +3,7 @@ import cors from "cors";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
+
 const app = express();
 const Port = 8000;
 
@@ -43,11 +44,38 @@ const blogSchema = new mongoose.Schema({
 const Blog = mongoose.model("Blog", blogSchema);
 
 // ==========================================
+// CUSTOM SECURITY MIDDLEWARE (Moved Above Routes)
+// ==========================================
+const verifyToken = (req, res, next) => {
+  // 1. Grab the Authorization header from the request
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1]; 
+
+  // 2. If no token is provided, block access instantly
+  if (!token) {
+    return res.status(401).json({ message: "Access Denied. You must be logged in to do this." });
+  }
+
+  try {
+    // 3. Verify the token using your exact secret key
+    const verifiedData = jwt.verify(token, "SUPER_SECRET_KEY_123");
+    
+    // 4. Attach the verified user details (id, role) directly onto the 'req' object
+    req.user = verifiedData; 
+    
+    // 5. CRITICAL: Pass control over to the actual route handler
+    next();
+  } catch (error) {
+    res.status(403).json({ message: "Invalid or expired authorization token." });
+  }
+};
+
+// ==========================================
 // 4. API ROUTES
 // ==========================================
 
-// [CREATE BLOG] - Post a brand new blog
-app.post("/api/blogs", async (req, res) => {
+// [CREATE BLOG] - Post a brand new blog (Protected)
+app.post("/api/blogs", verifyToken, async (req, res) => {
   try {
     const { title, description, imageUrl } = req.body;
     if (!title || !description || !imageUrl) {
@@ -71,7 +99,7 @@ app.post("/api/blogs", async (req, res) => {
   }
 });
 
-// [READ ALL BLOGS] - Fetch every single blog inside MongoDB
+// [READ ALL BLOGS] - Fetch every single blog inside MongoDB (Public)
 app.get("/api/blogs", async (req, res) => {
   try {
     const allBlogs = await Blog.find();
@@ -82,7 +110,7 @@ app.get("/api/blogs", async (req, res) => {
   }
 });
 
-// [READ SINGLE BLOG] - Fetch one specific blog by its URL ID parameter
+// [READ SINGLE BLOG] - Fetch one specific blog by its URL ID parameter (Public)
 app.get("/api/blogs/:id", async (req, res) => {
   try {
     const structuralId = req.params.id;
@@ -98,8 +126,8 @@ app.get("/api/blogs/:id", async (req, res) => {
   }
 });
 
-// [UPDATE BLOG] - Edit an existing blog using body data packets and ID parameters
-app.put("/api/blogs/:id", async (req, res) => {
+// [UPDATE BLOG] - Edit an existing blog using body data packets and ID parameters (Protected)
+app.put("/api/blogs/:id", verifyToken, async (req, res) => {
   try {
     const targetId = req.params.id;
     const { title, description, imageUrl } = req.body;
@@ -118,7 +146,6 @@ app.put("/api/blogs/:id", async (req, res) => {
       return res.status(404).json({ message: "Blog not found." });
     }
 
-    // FIXED: Put back on a single line to prevent syntax break
     res.status(200).json({ message: "Blog updated successfully!", blog: updatedBlog });
   } catch (error) {
     console.error("Update API error:", error);
@@ -126,8 +153,8 @@ app.put("/api/blogs/:id", async (req, res) => {
   }
 });
 
-// [DELETE BLOG] - Erase a blog document permanently from the cluster
-app.delete("/api/blogs/:id", async (req, res) => {
+// [DELETE BLOG] - Erase a blog document permanently from the cluster (Protected)
+app.delete("/api/blogs/:id", verifyToken, async (req, res) => {
   try {
     const targetId = req.params.id;
     const deletedDocument = await Blog.findByIdAndDelete(targetId);
@@ -143,7 +170,7 @@ app.delete("/api/blogs/:id", async (req, res) => {
   }
 });
 
-// [USER REGISTRATION] - Secure registration with bcrypt hashing
+// [USER REGISTRATION] - Secure registration with bcrypt hashing (Public)
 app.post("/api/register", async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -166,58 +193,48 @@ app.post("/api/register", async (req, res) => {
     await newUser.save();
     res.status(201).json({ message: "user registered successfully" });
   } catch (error) {
-    // FIXED: Corrected parenthesis layout and syntax formatting inside the catch block
     console.error("registration error:", error);
     res.status(500).json({ message: "server error during registration" });
   }
 });
 
-
-// [USER LOGIN] - Verify credentials and issue a secure JWT ticket
+// [USER LOGIN] - Verify credentials and issue a secure JWT ticket (Public)
 app.post("/api/login", async (req, res) => {
- 
   try {
     const { username, password } = req.body;
 
-    
-    // 1. Validation: Ensure fields aren't empty
     if (!username || !password) {
       return res.status(400).json({ message: "Username and password are required." });
     }
 
-    // 2. Check if user exists: Search MongoDB for the username
     const user = await User.findOne({ username });
     if (!user) {
-     
       return res.status(400).json({ message: "Invalid username or password." });
     }
 
-   
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(400).json({ message: "Invalid username or password." });
     }
 
-    
     const token = jwt.sign(
       { id: user._id, role: user.role }, 
-      "SUPER_SECRET_KEY_123", // The encryption key (Secret)
+      "SUPER_SECRET_KEY_123", 
       { expiresIn: "1h" }     
     );
 
-  
     res.status(200).json({
       message: "Login successful!",
       token: token,
       user: { username: user.username, role: user.role }
     });
-    
 
   } catch (error) {
     console.error("Login route error:", error);
     res.status(500).json({ message: "Server error during login." });
   }
 });
+
 // ==========================================
 // 5. SERVER STARTUP
 // ==========================================

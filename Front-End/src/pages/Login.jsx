@@ -16,12 +16,15 @@ function Login() {
     setError("");
 
     try {
-      // 1. Post credentials to backend login endpoint
-      await axios.post("http://localhost:8000/api/login", { username, password });
+      // 1. FIXED: Captured the data return stream inside the response variable
+      const response = await axios.post("http://localhost:8000/api/login", { 
+        username, 
+        password 
+      });
 
       setMessage(response.data.message); // "Login successful!"
 
-      // 2. CRITICAL STEP: Save the secure token and user data into Browser LocalStorage
+      // 2. Save the secure token and user data into Browser LocalStorage
       localStorage.setItem("blogToken", response.data.token);
       localStorage.setItem("blogUser", JSON.stringify(response.data.user));
 
@@ -35,6 +38,7 @@ function Login() {
       }, 1000);
 
     } catch (err) {
+      // If the backend actively rejected the request with a bad status code (like 400 or 401)
       if (err.response && err.response.data) {
         setError(err.response.data.message);
       } else {
