@@ -14,10 +14,8 @@ function CreateBlog({ onBlogCreated }) {
   setMessage("");
   setError("");
 
-  // 1. Grab the secure token from the browser's LocalStorage
   const token = localStorage.getItem("blogToken");
 
-  // 2. Safety Check: If there's no token, stop immediately before hitting the network
   if (!token) {
     setError("You must be logged in to create a blog post.");
     return;
