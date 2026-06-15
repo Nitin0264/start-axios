@@ -36,11 +36,11 @@ function App() {
                 <BlogList
                   blogs={blogs}
                   onBlogDeleted={fetchBlogs}
-                  onBlogUpdated={fetchBlogs}         />
+                  onBlogUpdated={fetchBlogs} />
               </>
             }
           />
-              <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<Login />} />
 
           <Route path="/blog/:id" element={<BlogDetail />} />
           <Route path="/register" element={<Register />} />

@@ -7,15 +7,10 @@ import jwt from "jsonwebtoken";
 const app = express();
 const Port = 8000;
 
-// ==========================================
-// 1. MIDDLEWARE SETUP
-// ==========================================
+
 app.use(cors());
 app.use(express.json());
 
-// ==========================================
-// 2. DATABASE CONNECTION
-// ==========================================
 mongoose.connect("mongodb://127.0.0.1:27017/auth_craft_db")
   .then(() => {
     console.log("connected to the mongodb ");
@@ -24,9 +19,7 @@ mongoose.connect("mongodb://127.0.0.1:27017/auth_craft_db")
     console.error("database connection error", err);
   });
 
-// ==========================================
-// 3. MONGOOSE MODELS & SCHEMAS
-// ==========================================
+
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, trim: true, unique: true },
   password: { type: String, required: true },
@@ -43,38 +36,26 @@ const blogSchema = new mongoose.Schema({
 
 const Blog = mongoose.model("Blog", blogSchema);
 
-// ==========================================
-// CUSTOM SECURITY MIDDLEWARE (Moved Above Routes)
-// ==========================================
+
 const verifyToken = (req, res, next) => {
-  // 1. Grab the Authorization header from the request
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; 
 
-  // 2. If no token is provided, block access instantly
   if (!token) {
     return res.status(401).json({ message: "Access Denied. You must be logged in to do this." });
   }
 
   try {
-    // 3. Verify the token using your exact secret key
     const verifiedData = jwt.verify(token, "SUPER_SECRET_KEY_123");
     
-    // 4. Attach the verified user details (id, role) directly onto the 'req' object
     req.user = verifiedData; 
     
-    // 5. CRITICAL: Pass control over to the actual route handler
     next();
   } catch (error) {
     res.status(403).json({ message: "Invalid or expired authorization token." });
   }
 };
 
-// ==========================================
-// 4. API ROUTES
-// ==========================================
-
-// [CREATE BLOG] - Post a brand new blog (Protected)
 app.post("/api/blogs", verifyToken, async (req, res) => {
   try {
     const { title, description, imageUrl } = req.body;
@@ -99,7 +80,6 @@ app.post("/api/blogs", verifyToken, async (req, res) => {
   }
 });
 
-// [READ ALL BLOGS] - Fetch every single blog inside MongoDB (Public)
 app.get("/api/blogs", async (req, res) => {
   try {
     const allBlogs = await Blog.find();
@@ -110,7 +90,6 @@ app.get("/api/blogs", async (req, res) => {
   }
 });
 
-// [READ SINGLE BLOG] - Fetch one specific blog by its URL ID parameter (Public)
 app.get("/api/blogs/:id", async (req, res) => {
   try {
     const structuralId = req.params.id;
@@ -126,7 +105,6 @@ app.get("/api/blogs/:id", async (req, res) => {
   }
 });
 
-// [UPDATE BLOG] - Edit an existing blog using body data packets and ID parameters (Protected)
 app.put("/api/blogs/:id", verifyToken, async (req, res) => {
   try {
     const targetId = req.params.id;
@@ -153,7 +131,6 @@ app.put("/api/blogs/:id", verifyToken, async (req, res) => {
   }
 });
 
-// [DELETE BLOG] - Erase a blog document permanently from the cluster (Protected)
 app.delete("/api/blogs/:id", verifyToken, async (req, res) => {
   try {
     const targetId = req.params.id;
@@ -170,7 +147,6 @@ app.delete("/api/blogs/:id", verifyToken, async (req, res) => {
   }
 });
 
-// [USER REGISTRATION] - Secure registration with bcrypt hashing (Public)
 app.post("/api/register", async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -235,9 +211,7 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// ==========================================
-// 5. SERVER STARTUP
-// ==========================================
+
 app.listen(Port, () => {
   console.log(`server is running on the port ${Port}`);
 });

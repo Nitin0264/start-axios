@@ -22,7 +22,7 @@ function CreateBlog({ onBlogCreated }) {
   }
 
   try {
-    // 3. Pass the token inside the configuration options object as an Authorization header
+   
     const response = await axios.post(
       "http://localhost:8000/api/blogs", 
       {
@@ -32,21 +32,18 @@ function CreateBlog({ onBlogCreated }) {
       },
       {
         headers: {
-          // Note the exact string matching your backend split logic: "Bearer <token>"
+          
           Authorization: `Bearer ${token}` 
         }
       }
     );
 
-    // Show success message from server
     setMessage(response.data.message);
     
-    // Trigger the parent list to refresh instantly
     if (onBlogCreated) {
       onBlogCreated();
     }
 
-    // Clear input fields out
     setTitle("");
     setImageUrl("");
     setDescription("");
