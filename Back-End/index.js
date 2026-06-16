@@ -1,16 +1,46 @@
 import express from "express";
 import cors from "cors";
+import multer from "multer";
+import path from "path";
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
+import { v2 as cloudinary } from "cloudinary";
+import { CloudinaryStorage } from "multer-storage-cloudinary";
 
 const app = express();
 const Port = 8000;
 
-
+// ==========================================
+// 1. STANDARD MIDDLEWARE SETUP
+// ==========================================
 app.use(cors());
 app.use(express.json());
 
+// ==========================================
+// 2. CLOUDINARY STORAGE ENGINE INTEGRATION
+// ==========================================
+cloudinary.config({
+  cloud_name: "Root",   // ◄ Paste your Cloud Name string
+  api_key: "377841397232461",         // ◄ Paste your API Key string
+  api_secret: "4f-pwn_emiB6n3Mmgfb_XoOue38"    // ◄ Paste your API Secret string
+});
+
+// Configure the cloud storage layout rules
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: "auth_craft_blogs", // Auto-creates this folder inside your cloud library
+    allowed_formats: ["jpg", "png", "jpeg", "webp"], // Secure input validation
+  },
+});
+
+// Intercept incoming files and pass them straight up to the cloud engine
+const upload = multer({ storage: storage });
+
+// ==========================================
+// 3. DATABASE CONNECTION
+// ==========================================
 mongoose.connect("mongodb://127.0.0.1:27017/auth_craft_db")
   .then(() => {
     console.log("connected to the mongodb ");
@@ -19,7 +49,9 @@ mongoose.connect("mongodb://127.0.0.1:27017/auth_craft_db")
     console.error("database connection error", err);
   });
 
-
+// ==========================================
+// 4. MONGOOSE DATA SCHEMAS
+// ==========================================
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, trim: true, unique: true },
   password: { type: String, required: true },
@@ -31,12 +63,14 @@ const User = mongoose.model("User", userSchema);
 const blogSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
-  imageUrl: { type: String, required: true }
+  imageUrl: { type: String, required: true } // Now records absolute secure cloud links
 }, { timestamps: true });
 
 const Blog = mongoose.model("Blog", blogSchema);
 
-
+// ==========================================
+// CUSTOM HANDSHAKE ROUTE GUARD (MIDDLEWARE)
+// ==========================================
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; 
@@ -47,39 +81,51 @@ const verifyToken = (req, res, next) => {
 
   try {
     const verifiedData = jwt.verify(token, "SUPER_SECRET_KEY_123");
-    
     req.user = verifiedData; 
-    
     next();
   } catch (error) {
     res.status(403).json({ message: "Invalid or expired authorization token." });
   }
 };
 
-app.post("/api/blogs", verifyToken, async (req, res) => {
+// ==========================================
+// 5. RESTFUL API ENDPOINTS
+// ==========================================
+
+// [CREATE BLOG] - Uploads directly to Cloudinary and saves URL to Mongo
+app.post("/api/blogs", verifyToken, upload.single("image"), async (req, res) => {
   try {
-    const { title, description, imageUrl } = req.body;
-    if (!title || !description || !imageUrl) {
-      return res.status(400).json({ message: "all fields are required" });
+    const { title, description } = req.body;
+    
+    if (!req.file) {
+      return res.status(400).json({ message: "An image file upload is required." });
     }
+
+    if (!title || !description) {
+      return res.status(400).json({ message: "All text fields are required" });
+    }
+
+    // 🌟 FIXED: Changed to req.file.path to grab the cloud secure URL link
+    const imageUrl = req.file.path;
 
     const newBlog = new Blog({
       title,
       description,
-      imageUrl
+      imageUrl 
     });
 
     const savedBlog = await newBlog.save();
     res.status(201).json({
-      message: "blog created successfully",
+      message: "Blog created successfully and hosted on Cloudinary!",
       blog: savedBlog
     });
   } catch (error) { 
     console.error("error creating the blog", error);
-    res.status(500).json({ message: "server error. Could not create the blog " });
+    res.status(500).json({ message: "Server error. Could not build post." });
   }
 });
 
+// [READ ALL BLOGS]
 app.get("/api/blogs", async (req, res) => {
   try {
     const allBlogs = await Blog.find();
@@ -90,6 +136,7 @@ app.get("/api/blogs", async (req, res) => {
   }
 });
 
+// [READ SINGLE BLOG]
 app.get("/api/blogs/:id", async (req, res) => {
   try {
     const structuralId = req.params.id;
@@ -105,32 +152,41 @@ app.get("/api/blogs/:id", async (req, res) => {
   }
 });
 
-app.put("/api/blogs/:id", verifyToken, async (req, res) => {
+// [UPDATE BLOG] - Edit a post with an optional fresh Cloudinary image file swap
+app.put("/api/blogs/:id", verifyToken, upload.single("image"), async (req, res) => {
   try {
     const targetId = req.params.id;
-    const { title, description, imageUrl } = req.body;
+    const { title, description } = req.body;
 
-    if (!title || !description || !imageUrl) {
-      return res.status(400).json({ message: "All fields are required to update the blog." });
+    if (!title || !description) {
+      return res.status(400).json({ message: "Title and description are required fields." });
+    }
+
+    let updateData = { title, description };
+
+    // 🌟 FIXED: If a fresh file is chosen during edit, capture the new cloud secure URL path
+    if (req.file) {
+      updateData.imageUrl = req.file.path;
     }
 
     const updatedBlog = await Blog.findByIdAndUpdate(
       targetId,
-      { title, description, imageUrl },
-      { new: true }
+      updateData,
+      { new: true } 
     );
 
     if (!updatedBlog) {
       return res.status(404).json({ message: "Blog not found." });
     }
 
-    res.status(200).json({ message: "Blog updated successfully!", blog: updatedBlog });
+    res.status(200).json({ message: "Blog updated successfully with cloud assets!", blog: updatedBlog });
   } catch (error) {
     console.error("Update API error:", error);
     res.status(500).json({ message: "Server error. Could not update the blog." });
   }
 });
 
+// [DELETE BLOG]
 app.delete("/api/blogs/:id", verifyToken, async (req, res) => {
   try {
     const targetId = req.params.id;
@@ -140,13 +196,14 @@ app.delete("/api/blogs/:id", verifyToken, async (req, res) => {
       return res.status(404).json({ message: "This blog could not be found. It might already be deleted." });
     }
 
-    res.status(200).json({ message: "Blog post deleted successfully!" });
+    res.status(200).json({ message: "Blog post deleted successfully from storage!" });
   } catch (error) {
     console.error("Deletion API error:", error);
     res.status(500).json({ message: "Server error. Could not delete the post." });
   }
 });
 
+// [USER REGISTRATION]
 app.post("/api/register", async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -174,7 +231,7 @@ app.post("/api/register", async (req, res) => {
   }
 });
 
-// [USER LOGIN] - Verify credentials and issue a secure JWT ticket (Public)
+// [USER LOGIN]
 app.post("/api/login", async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -211,7 +268,9 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-
+// ==========================================
+// 6. INITIALIZE SERVER EXECUTION
+// ==========================================
 app.listen(Port, () => {
   console.log(`server is running on the port ${Port}`);
 });

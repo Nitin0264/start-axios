@@ -8,51 +8,87 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
 
   // Temporary state holders for the text being edited
   const [editTitle, setEditTitle] = useState("");
-  const [editImageUrl, setEditImageUrl] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editImageFile, setEditImageFile] = useState(null); // Tracks binary file selections for Cloudinary
 
   // Function to turn on the inline form mode and fill it with current data
   const startEditing = (blog) => {
     setEditingId(blog._id);
     setEditTitle(blog.title);
-    setEditImageUrl(blog.imageUrl);
     setEditDescription(blog.description);
+    setEditImageFile(null); // Reset file input state for a clean start
   };
 
   const cancelEditing = () => {
     setEditingId(null);
+    setEditImageFile(null);
   };
 
   const handleUpdate = async (id) => {
+    const token = localStorage.getItem("blogToken");
+    if (!token) {
+      alert("You must be logged in to update a post.");
+      return;
+    }
+
     try {
-      const response = await axios.put(`http://localhost:8000/api/blogs/${id}`, {
-        title: editTitle,
-        description: editDescription,
-        imageUrl: editImageUrl
-      });
+      // 1. Initialize FormData shipping container
+      const formData = new FormData();
+      formData.append("title", editTitle);
+      formData.append("description", editDescription);
+      
+      // 2. Only attach an image payload if the user actually chose a new file
+      if (editImageFile) {
+        formData.append("image", editImageFile);
+      }
+
+      const response = await axios.put(
+        `http://localhost:8000/api/blogs/${id}`, 
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data" // Inform server it's a file stream
+          }
+        }
+      );
 
       alert(response.data.message);
       setEditingId(null); 
+      setEditImageFile(null);
 
       if (onBlogUpdated) {
         onBlogUpdated(); 
       }
     } catch (err) {
-      alert("Failed to update the blog post.");
+      alert(err.response?.data?.message || "Failed to update the blog post.");
     }
   };
 
   const triggerDelete = async (idOfBlog) => {
     const confirmChoice = window.confirm("Are you absolutely sure you want to delete this post?");
     if (confirmChoice) {
+      const token = localStorage.getItem("blogToken");
+      if (!token) {
+        alert("You must be logged in to delete a post.");
+        return;
+      }
+
       try {
-        const response = await axios.delete(`http://localhost:8000/api/blogs/${idOfBlog}`);
+        const response = await axios.delete(
+          `http://localhost:8000/api/blogs/${idOfBlog}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
         alert(response.data.message);
         if (onBlogDeleted) {
           onBlogDeleted();
         }
       } catch (err) {
-        alert("Failed to delete the blog post.");
+        alert(err.response?.data?.message || "Failed to delete the blog post.");
       }
     }
   };
@@ -63,22 +99,20 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
       {blogs.length === 0 && <p>No blogs published yet!</p>}
 
       {blogs.map((blog) => {
-        // 3. Conditional Rendering Check
         const isCurrentlyEditing = editingId === blog._id;
 
         return (
           <div key={blog._id} style={{ borderBottom: "1px solid #ccc", paddingBottom: "15px", marginBottom: "15px" }}>
             
             {isCurrentlyEditing ? (
-          
               <div>
                 <div>
                   <label>Edit Title: </label>
                   <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
                 </div>
                 <div>
-                  <label>Edit Image URL: </label>
-                  <input type="text" value={editImageUrl} onChange={(e) => setEditImageUrl(e.target.value)} />
+                  <label>Upload New Cover Image (Optional): </label>
+                  <input type="file" accept="image/*" onChange={(e) => setEditImageFile(e.target.files[0])} />
                 </div>
                 <div>
                   <label>Edit Description: </label>
@@ -89,15 +123,20 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
                 <button type="button" onClick={cancelEditing}>Cancel</button>
               </div>
             ) : (
-
               <div>
                 <h3>
                   <Link to={`/blog/${blog._id}`}>{blog.title}</Link>
                 </h3>
-                <img src={blog.imageUrl} alt={blog.title} style={{ maxWidth: "150px" }} />
+                
+                {/* ☁️ CLEANED: Image sources are now completely direct cloud links! */}
+                <img 
+                  src={blog.imageUrl} 
+                  alt={blog.title} 
+                  style={{ maxWidth: "250px", height: "auto", objectFit: "cover", display: "block", marginBottom: "10px" }} 
+                />
+                
                 <p>{blog.description}</p>
                 
-                {/* Edit button placed side-by-side right in front of the Delete button */}
                 <button type="button" onClick={() => startEditing(blog)}>Edit Blog</button>
                 <button type="button" onClick={() => triggerDelete(blog._id)}>Delete Blog</button>
               </div>
