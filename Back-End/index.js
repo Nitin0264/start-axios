@@ -6,7 +6,7 @@ import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
+import fs from "fs"; // ◄ Added built-in Node File System to handle disk cleanup
 
 const app = express();
 const Port = 8000;
@@ -18,24 +18,24 @@ app.use(cors());
 app.use(express.json());
 
 // ==========================================
-// 2. CLOUDINARY STORAGE ENGINE INTEGRATION
+// 2. NATIVE CLOUDINARY CONFIGURATION
 // ==========================================
 cloudinary.config({
-  cloud_name: "Root",   // ◄ Paste your Cloud Name string
-  api_key: "377841397232461",         // ◄ Paste your API Key string
-  api_secret: "4f-pwn_emiB6n3Mmgfb_XoOue38"    // ◄ Paste your API Secret string
+  cloud_name: "dtxglqboa",   
+  api_key: "377841397232461",         
+  api_secret: "4f-pwn_emiB6n3Mmgfb_XoOue38"    
 });
 
-// Configure the cloud storage layout rules
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: "auth_craft_blogs", // Auto-creates this folder inside your cloud library
-    allowed_formats: ["jpg", "png", "jpeg", "webp"], // Secure input validation
+// 🌟 FIXED: Swapped out the buggy wrapper for standard Multer disk storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/"); // Keeps file temporarily in your local uploads folder
   },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  }
 });
 
-// Intercept incoming files and pass them straight up to the cloud engine
 const upload = multer({ storage: storage });
 
 // ==========================================
@@ -63,7 +63,7 @@ const User = mongoose.model("User", userSchema);
 const blogSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
-  imageUrl: { type: String, required: true } // Now records absolute secure cloud links
+  imageUrl: { type: String, required: true } 
 }, { timestamps: true });
 
 const Blog = mongoose.model("Blog", blogSchema);
@@ -92,7 +92,7 @@ const verifyToken = (req, res, next) => {
 // 5. RESTFUL API ENDPOINTS
 // ==========================================
 
-// [CREATE BLOG] - Uploads directly to Cloudinary and saves URL to Mongo
+// [CREATE BLOG] - Uploads via local temp file to Cloudinary and wipes disk
 app.post("/api/blogs", verifyToken, upload.single("image"), async (req, res) => {
   try {
     const { title, description } = req.body;
@@ -102,11 +102,20 @@ app.post("/api/blogs", verifyToken, upload.single("image"), async (req, res) => 
     }
 
     if (!title || !description) {
+      fs.unlinkSync(req.file.path);
       return res.status(400).json({ message: "All text fields are required" });
     }
 
-    // 🌟 FIXED: Changed to req.file.path to grab the cloud secure URL link
-    const imageUrl = req.file.path;
+    // 1. Send the file from your local uploads folder to Cloudinary manually
+    const cloudResult = await cloudinary.uploader.upload(req.file.path, {
+      folder: "auth_craft_blogs",
+    });
+
+    // 2. Delete the temporary file from your local hard drive
+    fs.unlinkSync(req.file.path);
+
+    // 3. CRITICAL: Save the secure cloud URL string to your variable
+    const imageUrl = cloudResult.secure_url; // ◄ Make sure this matches!
 
     const newBlog = new Blog({
       title,
@@ -121,6 +130,9 @@ app.post("/api/blogs", verifyToken, upload.single("image"), async (req, res) => 
     });
   } catch (error) { 
     console.error("error creating the blog", error);
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
     res.status(500).json({ message: "Server error. Could not build post." });
   }
 });
@@ -152,21 +164,27 @@ app.get("/api/blogs/:id", async (req, res) => {
   }
 });
 
-// [UPDATE BLOG] - Edit a post with an optional fresh Cloudinary image file swap
+// [UPDATE BLOG] - Edit a post with an optional native cloud image rewrite
 app.put("/api/blogs/:id", verifyToken, upload.single("image"), async (req, res) => {
   try {
     const targetId = req.params.id;
     const { title, description } = req.body;
 
     if (!title || !description) {
+      if (req.file) fs.unlinkSync(req.file.path);
       return res.status(400).json({ message: "Title and description are required fields." });
     }
 
     let updateData = { title, description };
 
-    // 🌟 FIXED: If a fresh file is chosen during edit, capture the new cloud secure URL path
+    // 🌟 FIXED: If a fresh file is chosen during edit, route it up natively and wipe local storage
     if (req.file) {
-      updateData.imageUrl = req.file.path;
+      const cloudResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: "auth_craft_blogs",
+      });
+      fs.unlinkSync(req.file.path); // Delete local temp file
+      
+      updateData.imageUrl = cloudResult.secure_url;
     }
 
     const updatedBlog = await Blog.findByIdAndUpdate(
@@ -182,6 +200,9 @@ app.put("/api/blogs/:id", verifyToken, upload.single("image"), async (req, res) 
     res.status(200).json({ message: "Blog updated successfully with cloud assets!", blog: updatedBlog });
   } catch (error) {
     console.error("Update API error:", error);
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
     res.status(500).json({ message: "Server error. Could not update the blog." });
   }
 });

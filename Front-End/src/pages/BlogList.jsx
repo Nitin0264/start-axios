@@ -128,12 +128,16 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
                   <Link to={`/blog/${blog._id}`}>{blog.title}</Link>
                 </h3>
                 
-                {/* ☁️ CLEANED: Image sources are now completely direct cloud links! */}
-                <img 
-                  src={blog.imageUrl} 
-                  alt={blog.title} 
-                  style={{ maxWidth: "250px", height: "auto", objectFit: "cover", display: "block", marginBottom: "10px" }} 
-                />
+            
+{/* ☁️ DYNAMIC IMAGE CHECKER: Handles both local relative paths and absolute cloud URLs */}
+<img 
+  src={blog.imageUrl.startsWith("http") ? blog.imageUrl : `http://localhost:8000${blog.imageUrl}`} 
+  alt={blog.title} 
+  style={{ maxWidth: "250px", height: "auto", objectFit: "cover", display: "block", marginBottom: "10px" }} 
+  onError={(e) => {
+    console.log("Image failed to load:", blog.imageUrl);
+  }}
+/>
                 
                 <p>{blog.description}</p>
                 
