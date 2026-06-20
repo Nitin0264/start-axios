@@ -129,7 +129,7 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
                 </h3>
                 
             
-{/* ☁️ DYNAMIC IMAGE CHECKER: Handles both local relative paths and absolute cloud URLs */}
+
 <img 
   src={blog.imageUrl.startsWith("http") ? blog.imageUrl : `http://localhost:8000${blog.imageUrl}`} 
   alt={blog.title} 
