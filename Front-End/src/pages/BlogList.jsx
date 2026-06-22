@@ -37,7 +37,7 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
       formData.append("title", editTitle);
       formData.append("description", editDescription);
       
-      // 2. Only attach an image payload if the user actually chose a new file
+
       if (editImageFile) {
         formData.append("image", editImageFile);
       }
@@ -48,7 +48,7 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data" // Inform server it's a file stream
+            "Content-Type": "multipart/form-data" 
           }
         }
       );
