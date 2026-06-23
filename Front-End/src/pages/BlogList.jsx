@@ -9,9 +9,9 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
   // Temporary state holders for the text being edited
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editImageFile, setEditImageFile] = useState(null); // Tracks binary file selections for Cloudinary
+  const [editImageFile, setEditImageFile] = useState(null);
 
-  // Function to turn on the inline form mode and fill it with current data
+
   const startEditing = (blog) => {
     setEditingId(blog._id);
     setEditTitle(blog.title);
