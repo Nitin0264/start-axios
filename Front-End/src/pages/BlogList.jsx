@@ -3,25 +3,24 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
-  // 1. Tracking state: holds the _id of the blog currently being edited (null if none)
   const [editingId, setEditingId] = useState(null);
-
-  // Temporary state holders for the text being edited
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
-  const [editImageFile, setEditImageFile] = useState(null);
-
+  const [editImageFile, setEditImageFile] = useState(null); 
+  const [editVideoFile, setEditVideoFile] = useState(null); // 🌟 State tracker for video edits
 
   const startEditing = (blog) => {
     setEditingId(blog._id);
     setEditTitle(blog.title);
     setEditDescription(blog.description);
-    setEditImageFile(null); // Reset file input state for a clean start
+    setEditImageFile(null);
+    setEditVideoFile(null);
   };
 
   const cancelEditing = () => {
     setEditingId(null);
     setEditImageFile(null);
+    setEditVideoFile(null);
   };
 
   const handleUpdate = async (id) => {
@@ -32,15 +31,12 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
     }
 
     try {
-      // 1. Initialize FormData shipping container
       const formData = new FormData();
       formData.append("title", editTitle);
       formData.append("description", editDescription);
       
-
-      if (editImageFile) {
-        formData.append("image", editImageFile);
-      }
+      if (editImageFile) formData.append("image", editImageFile);
+      if (editVideoFile) formData.append("video", editVideoFile); // 🌟 Append video data stream
 
       const response = await axios.put(
         `http://localhost:8000/api/blogs/${id}`, 
@@ -54,12 +50,8 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
       );
 
       alert(response.data.message);
-      setEditingId(null); 
-      setEditImageFile(null);
-
-      if (onBlogUpdated) {
-        onBlogUpdated(); 
-      }
+      cancelEditing();
+      if (onBlogUpdated) onBlogUpdated(); 
     } catch (err) {
       alert(err.response?.data?.message || "Failed to update the blog post.");
     }
@@ -69,26 +61,16 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
     const confirmChoice = window.confirm("Are you absolutely sure you want to delete this post?");
     if (confirmChoice) {
       const token = localStorage.getItem("blogToken");
-      if (!token) {
-        alert("You must be logged in to delete a post.");
-        return;
-      }
+      if (!token) return alert("You must be logged in.");
 
       try {
-        const response = await axios.delete(
-          `http://localhost:8000/api/blogs/${idOfBlog}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
+        const response = await axios.delete(`http://localhost:8000/api/blogs/${idOfBlog}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         alert(response.data.message);
-        if (onBlogDeleted) {
-          onBlogDeleted();
-        }
+        if (onBlogDeleted) onBlogDeleted();
       } catch (err) {
-        alert(err.response?.data?.message || "Failed to delete the blog post.");
+        alert("Failed to delete the blog post.");
       }
     }
   };
@@ -111,8 +93,12 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
                   <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
                 </div>
                 <div>
-                  <label>Upload New Cover Image (Optional): </label>
+                  <label>Update Cover Image: </label>
                   <input type="file" accept="image/*" onChange={(e) => setEditImageFile(e.target.files[0])} />
+                </div>
+                <div>
+                  <label>Update Video (Optional): </label>
+                  <input type="file" accept="video/*" onChange={(e) => setEditVideoFile(e.target.files[0])} />
                 </div>
                 <div>
                   <label>Edit Description: </label>
@@ -128,16 +114,23 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
                   <Link to={`/blog/${blog._id}`}>{blog.title}</Link>
                 </h3>
                 
-            
+                {/* 🖼️ Cover Image Component Display Block */}
+                <img 
+                  src={blog.imageUrl.startsWith("http") ? blog.imageUrl : `http://localhost:8000${blog.imageUrl}`} 
+                  alt={blog.title} 
+                  style={{ maxWidth: "250px", height: "auto", objectFit: "cover", display: "block", marginBottom: "10px", borderRadius: "4px" }} 
+                />
 
-<img 
-  src={blog.imageUrl.startsWith("http") ? blog.imageUrl : `http://localhost:8000${blog.imageUrl}`} 
-  alt={blog.title} 
-  style={{ maxWidth: "250px", height: "auto", objectFit: "cover", display: "block", marginBottom: "10px" }} 
-  onError={(e) => {
-    console.log("Image failed to load:", blog.imageUrl);
-  }}
-/>
+                {/* 🎬 Video Render Block - Runs dynamically only if video asset data field exists */}
+                {blog.videoUrl && (
+                  <video 
+                    src={blog.videoUrl} 
+                    controls 
+                    style={{ width: "100%", maxWidth: "450px", height: "auto", display: "block", marginBottom: "10px", borderRadius: "8px" }}
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                )}
                 
                 <p>{blog.description}</p>
                 
