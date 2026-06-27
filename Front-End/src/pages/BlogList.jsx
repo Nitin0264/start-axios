@@ -56,7 +56,7 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
       alert(err.response?.data?.message || "Failed to update the blog post.");
     }
   };
-
+// unable to post the large videos
   const triggerDelete = async (idOfBlog) => {
     const confirmChoice = window.confirm("Are you absolutely sure you want to delete this post?");
     if (confirmChoice) {
