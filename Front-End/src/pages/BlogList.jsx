@@ -114,14 +114,14 @@ function BlogList({ blogs, onBlogDeleted, onBlogUpdated }) {
                   <Link to={`/blog/${blog._id}`}>{blog.title}</Link>
                 </h3>
                 
-                {/* 🖼️ Cover Image Component Display Block */}
+             
                 <img 
                   src={blog.imageUrl.startsWith("http") ? blog.imageUrl : `http://localhost:8000${blog.imageUrl}`} 
                   alt={blog.title} 
                   style={{ maxWidth: "250px", height: "auto", objectFit: "cover", display: "block", marginBottom: "10px", borderRadius: "4px" }} 
                 />
 
-                {/* 🎬 Video Render Block - Runs dynamically only if video asset data field exists */}
+               
                 {blog.videoUrl && (
                   <video 
                     src={blog.videoUrl} 
